@@ -1,0 +1,55 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --color-primary: #2F5D4B;
+  --color-cream: #F4E9D5;
+  --color-charcoal: #3B2B22;
+  --color-golden: #F2B233;
+  --color-spice: #C94C3F;
+
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-heading: "Playfair Display", ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+  body {
+    font-family: var(--font-sans);
+    background-color: var(--color-cream);
+    color: var(--color-charcoal);
+    overflow-x: hidden;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-heading);
+  }
+}
+
+@layer utilities {
+  .curve-bottom {
+    border-bottom-left-radius: 50% 50px;
+    border-bottom-right-radius: 50% 50px;
+  }
+  
+  @media (min-width: 768px) {
+    .curve-bottom {
+      border-bottom-left-radius: 50% 100px;
+      border-bottom-right-radius: 50% 100px;
+    }
+  }
+
+  .curve-top {
+    border-top-left-radius: 50% 50px;
+    border-top-right-radius: 50% 50px;
+  }
+
+  @media (min-width: 768px) {
+    .curve-top {
+      border-top-left-radius: 50% 100px;
+      border-top-right-radius: 50% 100px;
+    }
+  }
+}

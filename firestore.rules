@@ -1,0 +1,134 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: reservations
+    // Document ID: auto-generated
+    // Fields:
+    //   - name: string (required, max 100 chars)
+    //   - email: string (required, valid email)
+    //   - phone: string (required, max 20 chars)
+    //   - guests: string (required, max 10 chars)
+    //   - date: string (required, max 20 chars)
+    //   - time: string (required, max 20 chars)
+    //   - createdAt: timestamp (required)
+    //
+    // Collection: newsletter_subscriptions
+    // Document ID: auto-generated
+    // Fields:
+    //   - email: string (required, valid email)
+    //   - createdAt: timestamp (required)
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    
+    function isAuthenticated() {
+       return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        (
+          (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin') ||
+          (request.auth.token.email == "wamalaandrew632@gmail.com" && request.auth.token.email_verified == true)
+        );
+    }
+    
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+    
+    function isValidEmail(email) {
+       return email is string &&
+         email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
+    }
+
+    // ===============================================================
+    // Domain Validators
+    // ===============================================================
+
+    function isValidReservation(data) {
+      return hasOnlyAllowedFields(['name', 'email', 'phone', 'guests', 'date', 'time', 'createdAt']) &&
+             data.name is string && data.name.size() > 0 && data.name.size() <= 100 &&
+             data.email is string && isValidEmail(data.email) && data.email.size() <= 100 &&
+             data.phone is string && data.phone.size() > 0 && data.phone.size() <= 20 &&
+             data.guests is string && data.guests.size() > 0 && data.guests.size() <= 10 &&
+             data.date is string && data.date.size() > 0 && data.date.size() <= 20 &&
+             data.time is string && data.time.size() > 0 && data.time.size() <= 20 &&
+             data.createdAt is timestamp;
+    }
+
+    function isValidNewsletterSubscription(data) {
+      return hasOnlyAllowedFields(['email', 'createdAt', 'status']) &&
+             data.email is string && isValidEmail(data.email) && data.email.size() <= 100 &&
+             data.createdAt is timestamp &&
+             (!('status' in data) || data.status in ['pending', 'confirmed']);
+    }
+
+    function isValidOrder(data) {
+      return hasOnlyAllowedFields(['userId', 'userEmail', 'itemCount', 'orderType', 'address', 'paymentMethod', 'status', 'createdAt', 'guestName', 'guestPhone', 'guestEmail']) &&
+             (
+               (isAuthenticated() && data.userId == request.auth.uid) ||
+               (!isAuthenticated() && data.userId == 'guest')
+             ) &&
+             (data.userEmail == null || data.userEmail is string) &&
+             (data.guestName == null || (data.guestName is string && data.guestName.size() > 0 && data.guestName.size() <= 100)) &&
+             (data.guestPhone == null || (data.guestPhone is string && data.guestPhone.size() > 0 && data.guestPhone.size() <= 20)) &&
+             (data.guestEmail == null || (data.guestEmail is string && isValidEmail(data.guestEmail) && data.guestEmail.size() <= 100)) &&
+             data.itemCount is number && data.itemCount > 0 &&
+             data.orderType in ['delivery', 'pickup'] &&
+             data.address is string && data.address.size() > 0 && data.address.size() <= 200 &&
+             data.paymentMethod in ['card', 'cash'] &&
+             data.status == 'pending' &&
+             data.createdAt is timestamp;
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /reservations/{reservationId} {
+      // Allow anyone to create a reservation (public form)
+      allow create: if isValidReservation(request.resource.data);
+      // Allow admins to read, update, delete
+      allow read, update, delete: if isAdmin();
+    }
+
+    match /newsletter_subscriptions/{subscriptionId} {
+      // Allow anyone to subscribe (public form)
+      allow create: if isValidNewsletterSubscription(request.resource.data);
+      // Allow admins to read, update, delete
+      allow read, update, delete: if isAdmin();
+    }
+
+    match /orders/{orderId} {
+      // Allow anyone to create an order (guest or authenticated)
+      allow create: if isValidOrder(request.resource.data);
+      // Allow users to read their own orders, and admins to read all
+      allow read: if (isAuthenticated() && resource.data.userId == request.auth.uid) || isAdmin();
+      // Allow admins to update orders (e.g., status), or users to cancel their own pending orders
+      allow update: if isAdmin() || (
+        isAuthenticated() && 
+        resource.data.userId == request.auth.uid && 
+        resource.data.status == 'pending' && 
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']) && 
+        request.resource.data.status == 'cancelled'
+      );
+      allow delete: if isAdmin();
+    }
+
+    match /users/{userId} {
+      allow read: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+      // Only admins can create/update roles, or users can create their own non-admin profile
+      allow create: if isAuthenticated() && request.auth.uid == userId && (!('role' in request.resource.data) || request.resource.data.role != 'admin');
+      allow update: if isAdmin() || (isAuthenticated() && request.auth.uid == userId && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['points']));
+    }
+  }
+}

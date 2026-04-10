@@ -1,0 +1,39 @@
+{
+  "entities": {
+    "Reservation": {
+      "title": "Reservation",
+      "description": "A table reservation at Alpha Goat Grill.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "description": "Full name of the guest." },
+        "email": { "type": "string", "format": "email", "description": "Email address of the guest." },
+        "phone": { "type": "string", "description": "Phone number of the guest." },
+        "guests": { "type": "string", "description": "Number of guests." },
+        "date": { "type": "string", "description": "Date of the reservation." },
+        "time": { "type": "string", "description": "Time of the reservation." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Timestamp when the reservation was created." }
+      },
+      "required": ["name", "email", "phone", "guests", "date", "time", "createdAt"]
+    },
+    "NewsletterSubscription": {
+      "title": "Newsletter Subscription",
+      "description": "A user subscribing to the newsletter.",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string", "format": "email", "description": "Email address of the subscriber." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Timestamp when the subscription was created." }
+      },
+      "required": ["email", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/reservations/{reservationId}": {
+      "schema": { "$ref": "#/entities/Reservation" },
+      "description": "Stores all table reservations."
+    },
+    "/newsletter_subscriptions/{subscriptionId}": {
+      "schema": { "$ref": "#/entities/NewsletterSubscription" },
+      "description": "Stores all newsletter subscriptions."
+    }
+  }
+}
